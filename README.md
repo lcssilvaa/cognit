@@ -28,9 +28,8 @@ juntos no mesmo ambiente, pois ambos usam o mesmo nome de importação.
 ## Regras
 
 - A partida começa com **3 vidas**.
-- São **5 perguntas**, em ordem de dificuldade: Iniciante, Básico,
-  Intermediário, Avançado e Desafio.
-- Cada acerto aumenta o progresso em 20% e libera a próxima pergunta.
+- São **10 perguntas**, em ordem de dificuldade: de Iniciante até Desafio final.
+- Cada acerto aumenta o progresso em 10% e libera a próxima pergunta.
 - Cada erro desconta uma vida. A pergunta se mantém e a alternativa errada
   fica desativada; escolha outra para continuar.
 - Ao acertar todas, você vence. Ao perder a terceira vida, a partida acaba.
@@ -44,6 +43,11 @@ redimensionada e mantém a proporção do protótipo.
 Tecnologia é o único tema disponível. Os outros aparecem como “Em breve”.
 Criar quizzes pela interface, login, ranking e salvamento entre sessões
 ficam fora desta primeira versão.
+
+Os níveis 6 a 10 continuam a sequência com consultas a APIs via GET,
+imagens e containers Docker, escala horizontal na cloud, DNS e TCP.
+Todos possuem alternativas de A a D, explicações e
+referências técnicas nos comentários de `jogo/perguntas.py`.
 
 ## Onde personalizar
 
@@ -176,5 +180,5 @@ Sem instalar nenhuma ferramenta extra:
 .\.venv\Scripts\python.exe -m unittest discover -s tests -v
 ```
 
-Os testes cobrem a vitória com cinco acertos, perda das três vidas,
+Os testes cobrem a vitória ao acertar todas as perguntas, perda das três vidas,
 tentativas repetidas, reinício e personalização de perguntas e vidas.
