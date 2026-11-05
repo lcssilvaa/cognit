@@ -121,8 +121,6 @@ class Jogo:
         ui.botao("Iniciar", (32, 536, 326, 60), "temas")
         ui.botao("Como jogar", (32, 610, 326, 58), "ajuda", "contorno")
         ui.vidas(self.partida.vidas_iniciais, self.partida.vidas_iniciais, y=732)
-        ui.texto(f"{self.partida.vidas_iniciais} vidas  ·  {len(self.partida.perguntas)} perguntas  ·  Tecnologia",
-                 (195, 774), 15, "secundario", centralizado=True)
 
     def cabecalho(self, titulo, voltar="inicio"):
         self.ui.botao("<", (24, 42, 44, 44), voltar, "contorno", tamanho=24)
@@ -153,7 +151,7 @@ class Jogo:
         self.cabecalho("Como jogar")
         ui.mascote("feliz", (122, 180, 146, 120))
         regras = [
-            ("01", "Escolha Tecnologia", "São cinco perguntas em ordem de dificuldade."),
+            ("01", "Escolha Tecnologia", f"São {len(self.partida.perguntas)} perguntas em ordem de dificuldade."),
             ("02", "Responda com calma", "Cada acerto libera a pergunta do próximo nível."),
             ("03", f"Cuide das suas {self.partida.vidas_iniciais} vidas",
              "Um erro custa uma vida. Tente outra alternativa na mesma pergunta."),
@@ -165,8 +163,6 @@ class Jogo:
             ui.texto(titulo, (76, y), 19, negrito=True)
             ui.paragrafo(descricao, (76, y + 27, 283, 53), 16, "secundario")
         ui.botao("Vamos jogar", (32, 701, 326, 56), "temas")
-        ui.texto("Mouse/toque · Tab e Enter · A, B, C ou D", (195, 785),
-                 13, "secundario", centralizado=True)
 
     def desenhar_pergunta(self):
         ui, partida = self.ui, self.partida
