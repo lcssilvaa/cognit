@@ -10,13 +10,14 @@ from partida import Partida
 
 
 class TestPartida(unittest.TestCase):
-    def test_cinco_acertos_levam_a_vitoria(self):
+    def test_todos_os_acertos_levam_a_vitoria(self):
         partida = Partida()
-        self.assertEqual(len(partida.perguntas), 5)
-        for nivel in range(5):
+        total = len(partida.perguntas)
+        for nivel in range(total):
             self.assertEqual(partida.indice, nivel)
             self.assertTrue(partida.responder(partida.pergunta["correta"]))
-            self.assertEqual(partida.progresso, (nivel + 1) * 20)
+            self.assertEqual(partida.progresso, round((nivel + 1) / total * 100))
+            self.assertEqual(partida.venceu, nivel == total - 1)
             partida.continuar()
         self.assertTrue(partida.venceu)
         self.assertEqual(partida.vidas, 3)
@@ -52,7 +53,7 @@ class TestPartida(unittest.TestCase):
         self.assertTrue(partida.perdeu)
         self.assertFalse(partida.venceu)
         self.assertEqual(partida.vidas, 0)
-        self.assertEqual(partida.progresso, 20)
+        self.assertEqual(partida.progresso, round(100 / len(partida.perguntas)))
         self.assertIsNone(partida.responder(partida.pergunta["correta"]))
 
     def test_uma_nova_partida_reinicia_tudo(self):
