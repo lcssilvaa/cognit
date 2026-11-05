@@ -1,0 +1,14 @@
+# Ambiente virtual e arquivos temporários do Python
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+
+# Exportação do Pygbag e imagens de verificação
+jogo/build/
+.verificacao/
+
+# Configurações locais
+.env
+.DS_Store
+Thumbs.db

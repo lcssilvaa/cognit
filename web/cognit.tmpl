@@ -1,0 +1,183 @@
+<html lang="pt-BR"><script src="{{cookiecutter.cdn}}pythons.js" type="module" id="site" data-python="python{{cookiecutter.PYBUILD}}" data-LINES="42" data-COLUMNS="132" data-os="vtx,snd,gui" defer>#<!--
+# Adaptado do default.tmpl do Pygbag 0.9.3:
+# https://pygame-web.github.io/cdn/0.9.3/default.tmpl
+# Copyright (c) 2022 pygame-web. Licença MIT: LICENSE-Pygbag.txt.
+# Este arquivo apenas carrega o jogo Python. As telas são desenhadas no Pygame.
+import asyncio
+import os
+import platform
+from pathlib import Path
+
+
+async def custom_site():
+    import embed
+    from aio.pep0723 import Config
+
+    # O Pygbag presume que localhost possui um proxy para /cdn/.
+    # O http.server serve apenas arquivos, então usamos o CDN real também aqui.
+    os.environ["PYGPI"] = "https://pygame-web.github.io/cdn/"
+    for repositorio in Config.pkg_repolist:
+        repositorio["-CDN-"] = os.environ["PYGPI"]
+
+    def relatar_erro(loop, contexto):
+        erro = contexto.get("exception") or contexto.get("message")
+        print(f"Falha ao executar o jogo: {erro}")
+        platform.window.cognit_falhou()
+
+    asyncio.get_running_loop().set_exception_handler(relatar_erro)
+    platform.window.canvas.style.visibility = "visible"
+    bundle = "{{cookiecutter.archive}}"
+    appdir = Path(f"/data/data/{bundle}")
+    appdir.mkdir()
+
+    if platform.window.location.host.find('.itch.zone') > 0:
+        import zipfile
+        async with platform.fopen("{{cookiecutter.archive}}.apk", "rb") as archive:
+            with zipfile.ZipFile(archive) as arquivo:
+                arquivo.extractall(appdir.as_posix())
+    else:
+        import tarfile
+        async with platform.fopen("{{cookiecutter.archive}}.tar.gz", "rb") as archive:
+            with tarfile.open(fileobj=archive, mode="r:gz") as arquivo:
+                arquivo.extractall(path=appdir.as_posix(), filter='tar')
+
+    platform.run_main(PyConfig, loaderhome=appdir / "assets", loadermain=None)
+    while embed.counter() < 0:
+        await asyncio.sleep(.1)
+
+    main = appdir / "assets" / "main.py"
+    await TopLevel_async_handler.start_toplevel(platform.shell, console=False)
+    __import__(__name__).__file__ = main
+
+    def ui_callback(pkg):
+        platform.window.infobox.innerText = "Preparando o jogo…"
+
+    try:
+        await shell.source(main, callback=ui_callback)
+    except Exception:
+        import traceback
+        traceback.print_exc()
+        platform.window.cognit_falhou()
+        return
+    platform.window.config.gui_divider = 1
+    platform.window.window_resize()
+
+
+asyncio.run(custom_site())
+
+# BEGIN BLOCK
+#
+# do not alter that comment block it is separating python code from html code
+# =============================================================================
+# --></script><head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#10294D">
+<meta name="description" content="Cinco perguntas de tecnologia, três vidas e um novo desafio a cada nível. Jogue Cognit!">
+<title>{{cookiecutter.title}} · Quiz de tecnologia</title>
+<link rel="icon" type="image/png" href="favicon.png">
+<script>
+// END BLOCK
+config = {
+    xtermjs: "{{cookiecutter.xtermjs}}",
+    _sdl2: "canvas",
+    user_canvas: 0,
+    user_canvas_managed: 1,
+    gui_divider: 1,
+    ume_block: 0,
+    can_close: 0,
+    archive: "{{cookiecutter.archive}}",
+    gui_debug: 0,
+    cdn: "{{cookiecutter.cdn}}",
+    autorun: {{cookiecutter.autorun}},
+    PYBUILD: "{{cookiecutter.PYBUILD}}",
+    fb_ar: 390 / 844,
+    fb_width: "{{cookiecutter.width}}",
+    fb_height: "{{cookiecutter.height}}"
+};
+
+function show_infobox() {
+    document.getElementById("infobox").style.display = "block";
+}
+function atualizar_resolucao() {
+    const canvas = document.getElementById("canvas");
+    const escala = Math.min(window.innerWidth / 390, window.innerHeight / 844);
+    const largura = Math.max(1, Math.round(390 * escala));
+    const altura = Math.max(1, Math.round(844 * escala));
+    const densidade = Math.max(1, window.devicePixelRatio || 1);
+    canvas.style.width = largura + "px";
+    canvas.style.height = altura + "px";
+    // O Pygame cria o canvas com estes pixels; o CSS controla só o tamanho visível.
+    window.cognit_resolucao = [Math.round(largura * densidade), Math.round(altura * densidade)];
+}
+window.addEventListener("resize", atualizar_resolucao);
+function cognit_pronto() {
+    // O jogo só retira o aviso depois de desenhar seu primeiro quadro.
+    document.getElementById("infobox").style.display = "none";
+    document.getElementById("transfer").hidden = true;
+}
+function cognit_falhou() {
+    const aviso = document.getElementById("infobox");
+    aviso.textContent = "Não foi possível carregar o jogo. Verifique sua conexão e tente novamente.";
+    const botao = document.createElement("button");
+    botao.textContent = "Tentar novamente";
+    botao.onclick = () => location.reload();
+    aviso.appendChild(botao);
+    aviso.style.display = "block";
+    document.getElementById("transfer").hidden = true;
+}
+window.addEventListener("error", (evento) => {
+    if (evento.target.id === "site") cognit_falhou();
+}, true);
+async function custom_onload() {
+    atualizar_resolucao();
+    show_infobox();
+}
+function custom_prerun() {}
+function custom_postrun() {}
+function info_inline(data) { document.getElementById("info").textContent = data; }
+globalThis.__canvas_resized = () => {};
+</script>
+<script src="{{cookiecutter.cdn}}browserfs.min.js"></script>
+<style>
+    * { box-sizing: border-box; }
+    [hidden] { display: none !important; }
+    html, body { margin: 0; width: 100%; height: 100%; overflow: hidden; }
+    body { background: #10294d; font-family: system-ui, sans-serif; color: #10294d; }
+    /* O canvas precisa ficar sem borda e sem padding para preservar os cliques. */
+    canvas.emscripten {
+        position: absolute; inset: 0; margin: auto; border: 0; padding: 0;
+        width: 100%; height: 100%; display: block; touch-action: none; outline: none;
+    }
+    #infobox {
+        position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%);
+        z-index: 10; width: min(310px, 85vw); padding: 28px; border-radius: 24px;
+        background: #f4f8ff; text-align: center; font-size: 18px; line-height: 1.6;
+        box-shadow: 0 16px 60px #0003;
+    }
+    #transfer { position: fixed; top: 65%; width: 100%; text-align: center; color: #fff; }
+    #progress { accent-color: #ffb224; max-width: 70vw; }
+    #infobox button {
+        display: block; margin: 18px auto 0; border: 0; border-radius: 20px;
+        padding: 10px 20px; background: #1e5fa8; color: white;
+        font: inherit; cursor: pointer;
+    }
+    #status { display: none; }
+    #crt, #pyconsole, #dlg, #html { display: none !important; }
+</style>
+</head>
+<body>
+<div id="infobox" role="status" aria-live="polite">Cognit<br>Preparando seu desafio…</div>
+<div id="transfer"><div id="status"></div><progress id="progress" value="0" max="100"></progress></div>
+<canvas class="emscripten" id="canvas" width="390" height="844" tabindex="0"
+    aria-label="Cognit: quiz de tecnologia. Use Tab e Enter para navegar e A, B ou C para responder."
+    oncontextmenu="event.preventDefault()"></canvas>
+<canvas class="emscripten" id="canvas3d" width="390" height="844" hidden></canvas>
+<div id="html"></div>
+<div id="crt" hidden><div id="system" hidden></div><div id="box" hidden>
+    <div id="info"></div><iframe id="iframe" name="iframe" title="Informações" hidden></iframe>
+</div></div>
+<div id="dlg" hidden><input type="file" id="dlg_multifile" multiple></div>
+<div id="pyconsole" hidden><div id="terminal"></div></div>
+<noscript>Ative o JavaScript do navegador para jogar Cognit.</noscript>
+</body></html>
