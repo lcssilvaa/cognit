@@ -57,8 +57,9 @@ no cérebro depois da espera. Os pontos são consultados no resultado da rodada.
 Uma trilha instrumental original de **20 segundos** toca em repetição, com
 volume baixo. Clique no **alto-falante** ou pressione **M** para desligar e
 religar o som. A escolha é mantida durante a sessão, inclusive ao trocar de tela.
-No navegador, o som começa depois do primeiro clique/toque ou tecla, respeitando
-o bloqueio de reprodução automática. [Áudio no Pygbag](https://pygame-web.github.io/wiki/pygbag-code/).
+No navegador, a trilha usa o player de áudio nativo, independente do loop do
+Pygame, e começa depois do primeiro clique/toque ou tecla. Ao trocar de aba ou
+bloquear o celular, ela pausa; ao voltar, retoma se o som estiver habilitado.
 
 Para ajustar, edite `MUSICA_ATIVA` e `VOLUME_MUSICA` em `jogo/config.py`.
 A reprodução fica isolada em `jogo/audio.py`; se o aparelho não tiver saída
@@ -111,11 +112,12 @@ Em outros dois terminais, abra uma instância do jogo em cada um:
    o código de seis dígitos e clica em **Vamos jogar**.
 4. Com pelo menos dois participantes, o anfitrião clica em **Iniciar disputa**.
 
-`http://localhost:8765` é o endereço padrão da API de salas, configurado em
-`jogo/config.py`. O endereço não é exibido no menu. Abri-lo no navegador mostra o status
-do servidor e as instruções de acesso. Para abrir a janela do jogo, execute
-`python jogo/main.py`; para jogar no navegador, siga a seção **Jogar no navegador**
-e acesse `http://localhost:8000`. Após atualizar `servidor.py`, encerre o servidor
+`http://localhost:8765` é o endereço padrão da API para o cliente desktop,
+configurado em `jogo/config.py`. No navegador, a conexão usa automaticamente
+o mesmo endereço em que o jogo foi aberto. Se o build web existir,
+`servidor.py` serve o jogo e a API; sem o build, a raiz mostra o status do
+servidor. Para abrir a janela do jogo, execute `python jogo/main.py`.
+Após atualizar `servidor.py`, encerre o servidor
 com `Ctrl+C` e execute-o novamente para carregar as alterações.
 
 No desktop, clique em um campo e digite. **Enter** encerra a edição,
@@ -143,10 +145,9 @@ Também é possível editar `SERVIDOR_PADRAO` em `jogo/config.py`.
 Se o Windows solicitar, permita a conexão do Python na rede privada.
 O servidor precisa permanecer aberto durante a disputa.
 
-Para celulares, exporte o jogo conforme a seção de navegador, execute
-`python -m http.server 8000 --bind 0.0.0.0 --directory jogo/build/web`
-e abra `http://192.168.1.20:8000/?servidor=http://192.168.1.20:8765`.
-O parâmetro `servidor` configura a conexão sem exibir um campo técnico no menu.
+Para celulares, exporte o jogo conforme a seção de navegador, mantenha
+`servidor.py` aberto e acesse `http://192.168.1.20:8765`.
+O jogo e as salas usam esse mesmo endereço, sem parâmetros adicionais.
 
 ### Regras das salas
 
@@ -188,20 +189,19 @@ compartilham esses dados.
 
 ### Usar pela internet
 
-O site estático do Render continua servindo o jogo. Para salas entre redes
-diferentes, é necessário hospedar também `servidor.py` em um serviço Python
-acessível aos participantes. Configure o serviço para executar
-`python servidor.py --host 0.0.0.0 --port PORTA_DO_SERVICO`, em uma única
-instância, atrás do proxy HTTPS da hospedagem. Nenhuma hospedagem é criada
-automaticamente ao executar o projeto.
+O `render.yaml` configura um **Web Service Python** para servir o jogo e as
+salas juntos. `servidor.py` escuta em `0.0.0.0` e usa a variável `PORT` da
+hospedagem (8765 fora dela). O navegador usa a origem atual, inclusive HTTPS,
+sem apontar para o `localhost` do jogador. Use uma única instância, pois as
+salas ficam em memória. Nenhuma hospedagem é criada ao executar o projeto.
 
-Configure o endereço HTTPS desse serviço em `SERVIDOR_PADRAO` ou em
-`COGNIT_SERVIDOR`, por exemplo `https://salas.seu-dominio.com`.
-Uma página HTTPS precisa de uma API HTTPS.
-É possível compartilhar o site como
+Para clientes desktop, configure o endereço HTTPS em `SERVIDOR_PADRAO` ou
+em `COGNIT_SERVIDOR`. Se optar por manter site e API separados, uma página
+HTTPS precisa de uma API HTTPS. Compartilhe o site como
 `https://jogo.seu-dominio.com/?servidor=https://salas.seu-dominio.com`.
 
-No Render, crie um **New → Web Service** no mesmo repositório e configure:
+Para hospedar somente a API separadamente, crie um **New → Web Service**
+no mesmo repositório e configure:
 
 | Campo | Valor |
 | --- | --- |
@@ -356,7 +356,7 @@ Instale a ferramenta de exportação e gere o site:
 ```powershell
 .\.venv\Scripts\python.exe -m pip install -r requirements-web.txt
 .\.venv\Scripts\python.exe exportar_web.py
-.\.venv\Scripts\python.exe -m http.server 8000 --directory jogo/build/web
+.\.venv\Scripts\python.exe servidor.py --port 8000
 ```
 
 Abra **http://localhost:8000**. Use `Ctrl+C` para encerrar o servidor.
@@ -375,29 +375,32 @@ A exportação usa os arquivos de execução do CDN oficial do Pygbag, portanto
 a versão web precisa de acesso à internet. A versão de computador funciona
 sem internet depois de instalar as dependências.
 
-No celular, a resolução considera `devicePixelRatio`, a densidade de pixels
-da tela. Por exemplo, um jogo exibido em 390 × 844 numa tela 3x é desenhado
-em 1170 × 2532 pixels. Ao girar o aparelho, o tamanho e os toques são
-recalculados. Depois de atualizar o código, gere a exportação e publique
-os arquivos novamente; recarregue a página no celular para ver a nova versão.
+No celular, o canvas ocupa toda a área disponível, inclusive quando a barra
+do Chrome muda de tamanho. Os componentes se adaptam à largura e à altura;
+textos e ilustrações mantêm suas proporções. A densidade considera
+`devicePixelRatio`, limitada a 2x para reduzir o trabalho por quadro.
+O botão no canto superior direito abre ou fecha a tela cheia nos navegadores
+que oferecem esse recurso. Ao girar o aparelho, o tamanho e os toques são
+recalculados. Gere a exportação e publique novamente após editar o código.
 
-### Publicar gratuitamente no Render
+### Publicar no Render
 
-O Render oferece **Static Sites** gratuitos, sujeitos às cotas de uso da
-plataforma. Este projeto inclui um `render.yaml` com a configuração do site.
-[Documentação de sites estáticos](https://render.com/docs/static-sites) e
+Este projeto inclui um `render.yaml` para publicar jogo e salas em um
+**Web Service Python**, com plano gratuito sujeito às cotas da plataforma.
+[Documentação de Web Services](https://render.com/docs/web-services) e
 [limites do plano gratuito](https://render.com/docs/free).
 
 1. Envie este projeto para um repositório no GitHub, GitLab ou Bitbucket.
    Inclua `jogo/assets`, `web`, os arquivos Python e os requirements.
    A pasta `.venv` e os arquivos gerados em `build` ficam fora do Git.
-2. No Render, selecione **New → Static Site** e conecte o repositório.
+2. No Render, selecione **New → Web Service** e conecte o repositório.
 3. Preencha:
 
    | Campo | Valor |
    | --- | --- |
    | Build Command | `pip install -r requirements-web.txt && python exportar_web.py` |
-   | Publish Directory | `jogo/build/web` |
+   | Start Command | `python servidor.py` |
+   | Health Check Path | `/saude` |
 
 4. Crie o site e aguarde a construção. O Render fornece um endereço público
    para compartilhar com outras pessoas.
@@ -406,10 +409,12 @@ Também é possível usar **New → Blueprint** para o Render ler o `render.yaml
 A versão de Python do build está indicada em `.python-version`.
 [Referência do Blueprint](https://render.com/docs/blueprint-spec).
 
-O projeto está preparado para publicação; a criação do site na sua conta
-Render e o endereço público dependem desses passos. O `render.yaml` publica
-o site estático; o servidor de salas deve ser hospedado separadamente para
-disputas pela internet.
+Se a publicação existente for um **Static Site**, crie um novo **Web Service**
+com esses valores. Para uma publicação nova, também é possível usar o
+Blueprint atualizado. Alterar o código não faz um Static Site executar
+Python. Compartilhe a URL do Web Service.
+Serviços gratuitos podem hibernar sem uso, e o primeiro acesso pode demorar.
+Reiniciar ou publicar o servidor encerra as salas em memória.
 
 ## Verificar as regras
 

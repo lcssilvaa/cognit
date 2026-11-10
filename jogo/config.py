@@ -18,7 +18,8 @@ REDUCAO_POR_PERGUNTA = 3
 TEMPO_MINIMO = 12
 ESPERA_DICA = 8
 
-# Salas: o anfitrião também joga. O servidor é iniciado separadamente.
+# Salas no desktop: configure a API abaixo. O anfitrião também joga.
+# Na versão web, a API usa a origem da página (web/cognit.tmpl).
 SERVIDOR_PADRAO = os.environ.get("COGNIT_SERVIDOR", "http://localhost:8765")
 INTERVALO_SINCRONIZACAO = 0.5
 MAX_JOGADORES = 12

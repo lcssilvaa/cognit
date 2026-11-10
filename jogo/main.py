@@ -70,6 +70,9 @@ class Jogo:
 
     def calcular_area_jogo(self):
         largura, altura = self.janela.get_size()
+        if sys.platform == "emscripten":
+            self.area_jogo = self.janela.get_rect()
+            return
         escala = min(largura / LARGURA, altura / ALTURA)
         tamanho = (max(1, round(LARGURA * escala)), max(1, round(ALTURA * escala)))
         self.area_jogo = pygame.Rect((0, 0), tamanho)

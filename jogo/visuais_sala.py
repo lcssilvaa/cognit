@@ -12,7 +12,7 @@ import pygame
 from avatares import AVATARES
 from config import CORES, DURACAO_FEEDBACK_RODADA, MAX_JOGADORES
 from telas_pergunta import desenhar_alternativas, desenhar_cabecalho, desenhar_dica, desenhar_enunciado
-from visuais_temas import TEMAS_POR_PAGINA, desenhar_cartao_tema
+from visuais_temas import TEMAS_POR_PAGINA, desenhar_cartao_tema, desenhar_opcao_tema
 
 
 def transicao(tempo, atraso=0, duracao=0.8):
@@ -115,21 +115,22 @@ class VisuaisSala:
         """Seleciona diretamente no catálogo recebido do servidor, sem iniciar a sala."""
         ui, s = self.ui, self.sala
         ui.cabecalho("Escolha o tema", voltar="sala_voltar_temas")
-        ui.paragrafo("Qual vai ser o desafio da turma?", (24, 159, 342, 42), 17, "secundario")
+        ui.paragrafo("O mesmo desafio para toda a turma.", (24, 156, 342, 38), 17, "secundario")
+        ui.texto("TEMAS DISPONÍVEIS", (24, 206), 12, "secundario", True)
+        ui.rotulo(f"{len(s.temas)} opções", (246, 200, 120, 28), 13, "secundario", centralizado=True)
         inicio = s.pagina_temas * TEMAS_POR_PAGINA
         for i, tema in enumerate(s.temas[inicio:inicio + TEMAS_POR_PAGINA]):
             selecionado = tema["id"] == s.tema
-            desenhar_cartao_tema(ui, tema, (24, 224 + i * 208, 342, 190),
-                                "sala_tema_" + tema["id"], selecionado=selecionado,
-                                rotulo_acao="Selecionado" if selecionado else "Selecionar")
+            desenhar_opcao_tema(ui, tema, (24, 244 + i * 226, 342, 210),
+                                "sala_tema_" + tema["id"], selecionado)
         if len(s.temas) > TEMAS_POR_PAGINA:
-            ui.botao("<", (24, 654, 48, 40), "sala_temas_anterior", "contorno", ativo=s.pagina_temas > 0)
+            ui.botao("<", (24, 699, 48, 40), "sala_temas_anterior", "contorno", ativo=s.pagina_temas > 0)
             ui.texto(f"{s.pagina_temas + 1} / {(len(s.temas) - 1) // TEMAS_POR_PAGINA + 1}",
-                     (195, 663), 16, "secundario", centralizado=True)
-            ui.botao(">", (318, 654, 48, 40), "sala_temas_proxima", "contorno",
+                     (195, 708), 16, "secundario", centralizado=True)
+            ui.botao(">", (318, 699, 48, 40), "sala_temas_proxima", "contorno",
                      ativo=inicio + TEMAS_POR_PAGINA < len(s.temas))
-        ui.paragrafo("Toque em um tema para voltar à criação da sala.",
-                     (32, 739, 326, 57), 17, "secundario", centralizado=True)
+        ui.paragrafo("Toque no cartão para escolher.\nDepois, é só criar a sala e convidar os amigos.",
+                     (32, 754, 326, 57), 15, "secundario", centralizado=True)
 
     def _icones(self):
         ui, s = self.ui, self.sala

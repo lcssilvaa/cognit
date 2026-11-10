@@ -11,6 +11,30 @@ ICONES_TEMA = {
 }
 
 
+def desenhar_opcao_tema(ui, tema, area, acao, selecionado=False):
+    """Opção de sala com descrição, quantidade de perguntas e estado explícito."""
+    x, y, largura, altura = area
+    arquivo = ICONES_TEMA.get(tema.get("icone", tema["id"]), ICONES_TEMA["tecnologia"])
+    ui.cartao(area, "branco", "azul" if selecionado else "borda", 24)
+    ui.cartao((x + 18, y + 18, 84, 84), "azul_claro", None, 22)
+    ui.ilustracao(arquivo, (x + 24, y + 24, 72, 72))
+    ui.rotulo(tema["nome"], (x + 118, y + 23, largura - 142, 36), 24, "azul_escuro", True)
+    ui.cartao((x + 118, y + 68, 132, 28), "azul_claro", None, 14)
+    ui.paragrafo(f"{tema['total']} perguntas", (x + 122, y + 68, 124, 28),
+                 14, "azul", True, True)
+    ui.paragrafo(tema.get("descricao", "Um novo assunto para desafiar sua mente."),
+                 (x + 22, y + 112, largura - 44, 46), 17, "secundario")
+    if selecionado:
+        ui.cartao((x + 18, y + altura - 42, largura - 36, 30), "verde_claro", None, 15)
+        ui.simbolo_resultado(True, (x + 36, y + altura - 27), 7, "verde")
+        ui.rotulo("Tema selecionado", (x + 54, y + altura - 42, largura - 86, 30),
+                  15, "verde", True)
+    else:
+        ui.rotulo("Escolher este tema  >", (x + 22, y + altura - 43, largura - 44, 32),
+                  16, "azul", True)
+    ui.area_interativa(area, acao)
+
+
 def desenhar_cartao_tema(ui, tema, area, acao=None, compacto=False, *,
                         selecionado=False, rotulo_acao="Jogar agora"):
     x, y, largura, altura = area

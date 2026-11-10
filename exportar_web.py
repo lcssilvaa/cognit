@@ -21,5 +21,10 @@ if __name__ == "__main__":
     subprocess.run(comando, cwd=RAIZ, check=True)
     shutil.copyfile(RAIZ / "web" / "LICENSE-Pygbag.txt",
                     RAIZ / "jogo" / "build" / "web" / "LICENSE-Pygbag.txt")
+    # O player nativo do navegador lê a trilha sem passar pelo mixer WebAssembly.
+    assets_web = RAIZ / "jogo" / "build" / "web" / "assets"
+    assets_web.mkdir(exist_ok=True)
+    shutil.copyfile(RAIZ / "jogo" / "assets" / "musica_fundo.ogg",
+                    assets_web / "musica_fundo.ogg")
     print("\nExportação pronta em jogo/build/web.")
-    print("Para testar: python -m http.server 8000 --directory jogo/build/web")
+    print("Para testar o jogo e as salas: python servidor.py --port 8000")

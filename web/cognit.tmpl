@@ -14,7 +14,7 @@ async def custom_site():
     from aio.pep0723 import Config
 
     # O Pygbag presume que localhost possui um proxy para /cdn/.
-    # O http.server serve apenas arquivos, então usamos o CDN real também aqui.
+    # O servidor do jogo não possui esse proxy, então usamos o CDN real também aqui.
     os.environ["PYGPI"] = "https://pygame-web.github.io/cdn/"
     for repositorio in Config.pkg_repolist:
         repositorio["-CDN-"] = os.environ["PYGPI"]
@@ -72,7 +72,7 @@ asyncio.run(custom_site())
 # --></script><head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta name="theme-color" content="#10294D">
+<meta name="theme-color" content="#F4F8FF">
 <meta name="description" content="Perguntas de Tecnologia e UX e Design, três vidas e salas para jogar com amigos. Jogue Cognit!">
 <title>{{cookiecutter.title}} · Tecnologia e UX e Design</title>
 <link rel="icon" type="image/png" href="favicon.png">
@@ -101,20 +101,32 @@ function show_infobox() {
 }
 function atualizar_resolucao() {
     const canvas = document.getElementById("canvas");
-    const escala = Math.min(window.innerWidth / 390, window.innerHeight / 844);
-    const largura = Math.max(1, Math.round(390 * escala));
-    const altura = Math.max(1, Math.round(844 * escala));
-    const densidade = Math.max(1, window.devicePixelRatio || 1);
+    if (!canvas) return;
+    const viewport = window.visualViewport;
+    const disponivel = [
+        Math.min(document.documentElement.clientWidth, viewport?.width || window.innerWidth),
+        Math.min(document.documentElement.clientHeight, viewport?.height || window.innerHeight)
+    ];
+    const celular = window.matchMedia("(pointer: coarse), (max-width: 600px)").matches;
+    const escala = Math.min(disponivel[0] / 390, disponivel[1] / 844);
+    const largura = Math.max(1, Math.round(celular ? disponivel[0] : 390 * escala));
+    const altura = Math.max(1, Math.round(celular ? disponivel[1] : 844 * escala));
+    // Limitar a 2x evita renderizar milhões de pixels extras a cada quadro no celular.
+    const densidade = Math.min(2, Math.max(1, window.devicePixelRatio || 1));
     canvas.style.width = largura + "px";
     canvas.style.height = altura + "px";
+    canvas.style.margin = celular ? "0" : "auto";
     // O Pygame cria o canvas com estes pixels; o CSS controla só o tamanho visível.
     window.cognit_resolucao = [Math.round(largura * densidade), Math.round(altura * densidade)];
 }
 window.addEventListener("resize", atualizar_resolucao);
+window.visualViewport?.addEventListener("resize", atualizar_resolucao);
+document.addEventListener("fullscreenchange", atualizar_resolucao);
 function cognit_pronto() {
     // O jogo só retira o aviso depois de desenhar seu primeiro quadro.
     document.getElementById("infobox").style.display = "none";
     document.getElementById("transfer").hidden = true;
+    document.getElementById("tela-cheia").hidden = !document.fullscreenEnabled;
 }
 function cognit_falhou() {
     const aviso = document.getElementById("infobox");
@@ -136,7 +148,74 @@ async function custom_onload() {
 function custom_prerun() {}
 function custom_postrun() {}
 // Ponte pequena entre o Python/WebAssembly e o HTTP do servidor de salas.
-window.cognit_servidor = new URLSearchParams(location.search).get("servidor") || "http://localhost:8765";
+window.cognit_servidor = new URLSearchParams(location.search).get("servidor") || location.origin;
+// O áudio nativo continua estável mesmo quando um quadro do Pygame demora.
+const musicaCognit = new Audio("assets/musica_fundo.ogg");
+musicaCognit.loop = true;
+musicaCognit.preload = "auto";
+let musicaHabilitada = false;
+let musicaLiberada = false;
+let inicioMusica = null;
+let erroMusica = null;
+function cognit_audio_iniciar() {
+    if (!musicaHabilitada || !musicaLiberada || document.hidden || inicioMusica || !musicaCognit.paused) return;
+    inicioMusica = musicaCognit.play()
+        .then(() => { erroMusica = null; })
+        .catch(erro => {
+            if (erro.name !== "NotAllowedError" && erro.name !== "AbortError") {
+                erroMusica = "Não foi possível reproduzir a música.";
+            }
+        })
+        .finally(() => { inicioMusica = null; });
+}
+function cognit_audio_configurar(habilitada, volume) {
+    musicaHabilitada = Boolean(habilitada);
+    musicaCognit.volume = Math.max(0, Math.min(1, Number(volume)));
+    if (musicaHabilitada) cognit_audio_iniciar();
+    else musicaCognit.pause();
+}
+function cognit_audio_estado() {
+    return JSON.stringify({
+        carregada: musicaCognit.readyState >= 2,
+        tocando: !musicaCognit.paused && !musicaCognit.ended,
+        pausada: musicaCognit.paused && musicaCognit.currentTime > 0,
+        erro: erroMusica
+    });
+}
+function cognit_audio_encerrar() {
+    musicaHabilitada = false;
+    musicaCognit.pause();
+    musicaCognit.currentTime = 0;
+}
+function liberar_audio(evento) {
+    if (!evento.isTrusted) return;
+    musicaLiberada = true;
+    cognit_audio_iniciar();
+}
+window.addEventListener("pointerdown", liberar_audio, {capture: true, passive: true});
+window.addEventListener("keydown", liberar_audio, {capture: true});
+document.addEventListener("visibilitychange", () => {
+    if (document.hidden) musicaCognit.pause();
+    else cognit_audio_iniciar();
+});
+window.addEventListener("pagehide", () => musicaCognit.pause());
+window.addEventListener("pageshow", cognit_audio_iniciar);
+async function cognit_tela_cheia() {
+    const botao = document.getElementById("tela-cheia");
+    try {
+        if (document.fullscreenElement) await document.exitFullscreen();
+        else await document.documentElement.requestFullscreen();
+    } catch (erro) {
+        botao.title = "O navegador não permitiu abrir em tela cheia.";
+    }
+}
+document.addEventListener("fullscreenchange", () => {
+    const botao = document.getElementById("tela-cheia");
+    const ativa = Boolean(document.fullscreenElement);
+    botao.setAttribute("aria-pressed", String(ativa));
+    botao.setAttribute("aria-label", ativa ? "Sair da tela cheia" : "Abrir em tela cheia");
+    botao.title = ativa ? "Sair da tela cheia" : "Abrir em tela cheia";
+});
 const pedidosCognit = new Map();
 function cognit_json_ascii(valor) {
     // A ponte do Pygbag pode interpretar UTF-8 como Latin-1. Os escapes JSON
@@ -172,10 +251,11 @@ globalThis.__canvas_resized = () => {};
     * { box-sizing: border-box; }
     [hidden] { display: none !important; }
     html, body { margin: 0; width: 100%; height: 100%; overflow: hidden; }
-    body { background: #10294d; font-family: system-ui, sans-serif; color: #10294d; }
+    body { background: #f4f8ff; font-family: system-ui, sans-serif; color: #10294d; overscroll-behavior: none; }
     /* O canvas precisa ficar sem borda e sem padding para preservar os cliques. */
     canvas.emscripten {
-        position: absolute; inset: 0; margin: auto; border: 0; padding: 0;
+        position: fixed; inset: 0; margin: auto; border: 0; padding: 0;
+        max-width: 100%; max-height: 100%;
         width: 100%; height: 100%; display: block; touch-action: none; outline: none;
     }
     #infobox {
@@ -192,10 +272,25 @@ globalThis.__canvas_resized = () => {};
         font: inherit; cursor: pointer;
     }
     #status { display: none; }
+    #tela-cheia {
+        position: fixed; top: max(6px, env(safe-area-inset-top));
+        right: max(6px, env(safe-area-inset-right)); z-index: 5;
+        width: 36px; height: 36px; display: grid; place-items: center;
+        border: 1px solid #d6e2f2; border-radius: 12px; background: #f4f8ff;
+        color: #1e5fa8; cursor: pointer;
+    }
+    #tela-cheia:focus-visible { outline: 2px solid #1e5fa8; outline-offset: 2px; }
+    #tela-cheia svg { width: 19px; height: 19px; }
     #crt, #pyconsole, #dlg, #html { display: none !important; }
 </style>
 </head>
 <body>
+<button id="tela-cheia" type="button" onclick="cognit_tela_cheia()" hidden
+    aria-label="Abrir em tela cheia" aria-pressed="false" title="Abrir em tela cheia">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+        <path d="M8 3H3v5m13-5h5v5M3 16v5h5m13-5v5h-5"/>
+    </svg>
+</button>
 <div id="infobox" role="status" aria-live="polite">Cognit<br>Preparando seu desafio…</div>
 <div id="transfer"><div id="status"></div><progress id="progress" value="0" max="100"></progress></div>
 <canvas class="emscripten" id="canvas" width="390" height="844" tabindex="0"

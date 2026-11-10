@@ -1,10 +1,11 @@
 """Valida o arquivo real e o controle de música sem depender de alto-falantes."""
 
 import os
+import json
 from pathlib import Path
 import sys
 import unittest
-from unittest.mock import patch
+from unittest.mock import Mock, patch
 
 os.environ.setdefault("SDL_AUDIODRIVER", "dummy")
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "jogo"))
@@ -48,3 +49,24 @@ class TestAudio(unittest.TestCase):
         self.assertFalse(self.musica.carregada)
         self.assertFalse(self.musica.tocando)
         self.assertIsNotNone(self.musica.erro)
+
+    def test_navegador_usa_player_nativo_sem_inicializar_mixer(self):
+        janela = Mock()
+        estado = {"carregada": True, "tocando": True, "pausada": False, "erro": None}
+        janela.cognit_audio_estado.return_value = json.dumps(estado)
+        with (patch("audio.sys.platform", "emscripten"),
+              patch("audio.platform.window", janela, create=True), patch("pygame.mixer.init") as mixer):
+            musica = MusicaFundo()
+            musica.iniciar()
+            self.assertTrue(musica.carregada)
+            self.assertTrue(musica.tocando)
+            musica.alternar()
+            self.assertFalse(musica.habilitada)
+            janela.cognit_audio_configurar.assert_called_with(False, VOLUME_MUSICA)
+            musica.iniciar()
+            janela.cognit_audio_iniciar.assert_called_once()
+            musica.alternar()
+            janela.cognit_audio_configurar.assert_called_with(True, VOLUME_MUSICA)
+            musica.encerrar()
+            janela.cognit_audio_encerrar.assert_called_once()
+            mixer.assert_not_called()

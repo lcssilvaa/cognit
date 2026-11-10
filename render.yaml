@@ -2,9 +2,12 @@
 services:
   - type: web
     name: cognit
-    runtime: static
+    runtime: python
+    plan: free
+    numInstances: 1
     buildCommand: pip install -r requirements-web.txt && python exportar_web.py
-    staticPublishPath: jogo/build/web
+    startCommand: python servidor.py
+    healthCheckPath: /saude
     envVars:
       - key: SKIP_INSTALL_DEPS
         value: "true"

@@ -5,27 +5,35 @@ Para internet, execute uma única instância atrás de um proxy HTTPS.
 """
 
 import argparse
-from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 import json
+import os
 from pathlib import Path
 import sys
+from urllib.parse import quote, unquote, urlsplit
 
 sys.path.insert(0, str(Path(__file__).resolve().parent / "jogo"))
 
 from salas import ErroSala, GerenciadorSalas
 
+WEB = Path(__file__).resolve().parent / "jogo" / "build" / "web"
+
 
 class ServidorSalas(ThreadingHTTPServer):
     daemon_threads = True
 
-    def __init__(self, endereco, origens=("*",), gerenciador=None):
+    def __init__(self, endereco, origens=("*",), gerenciador=None, diretorio_web=WEB):
+        self.diretorio_web = Path(diretorio_web).resolve()
         super().__init__(endereco, Requisicao)
         self.gerenciador = gerenciador or GerenciadorSalas()
         self.origens = origens
 
 
-class Requisicao(BaseHTTPRequestHandler):
+class Requisicao(SimpleHTTPRequestHandler):
     """Adaptador HTTP: valida o JSON e delega as regras ao gerenciador."""
+
+    def __init__(self, pedido, endereco, servidor):
+        super().__init__(pedido, endereco, servidor, directory=str(servidor.diretorio_web))
 
     def log_message(self, formato, *args):
         # Não registra tokens nem respostas dos jogadores.
@@ -50,14 +58,17 @@ class Requisicao(BaseHTTPRequestHandler):
         self.send_header("Cache-Control", "no-store")
         self.send_header("Content-Length", str(len(corpo)))
         self.end_headers()
-        self.wfile.write(corpo)
+        if self.command != "HEAD":
+            self.wfile.write(corpo)
 
     def do_OPTIONS(self):
         self._responder(200 if self._origem_permitida() else 403)
 
     def do_GET(self):
-        caminho = self.path.partition("?")[0]
-        if caminho == "/":
+        caminho = urlsplit(self.path).path
+        if caminho == "/saude":
+            self._responder(200, {"ok": True})
+        elif caminho == "/" and not (self.server.diretorio_web / "index.html").is_file():
             self._responder(200, {
                 "ok": True,
                 "servico": "Servidor de salas do Cognit",
@@ -69,10 +80,26 @@ class Requisicao(BaseHTTPRequestHandler):
                 "abrir_jogo": "python jogo/main.py",
                 "verificar_servidor": "/saude",
             })
-        elif caminho == "/saude":
-            self._responder(200, {"ok": True})
         else:
+            self._servir_arquivo(caminho)
+
+    def do_HEAD(self):
+        self.do_GET()
+
+    def _servir_arquivo(self, caminho):
+        # Publica somente arquivos do build, sem listar pastas nem expor o código-fonte.
+        relativo = unquote(caminho).lstrip("/") or "index.html"
+        arquivo = (self.server.diretorio_web / relativo).resolve()
+        if (not arquivo.is_relative_to(self.server.diretorio_web)
+                or not arquivo.is_file()
+                or any(parte.startswith(".") for parte in Path(relativo).parts)):
             self._responder(404, {"erro": "Endereço não encontrado."})
+            return
+        self.path = "/" + quote(relativo)
+        if self.command == "HEAD":
+            super().do_HEAD()
+        else:
+            super().do_GET()
 
     def do_POST(self):
         self.connection.settimeout(10)
@@ -101,13 +128,15 @@ class Requisicao(BaseHTTPRequestHandler):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--host", default="127.0.0.1")
-    parser.add_argument("--port", type=int, default=8765)
+    parser.add_argument("--host", default="0.0.0.0")
+    parser.add_argument("--port", type=int, default=int(os.environ.get("PORT", "8765")))
+    parser.add_argument("--web", type=Path, default=WEB, help="Diretório do jogo exportado.")
     parser.add_argument("--origem", action="append", help="Origem web permitida; pode repetir.")
     args = parser.parse_args()
-    with ServidorSalas((args.host, args.port), args.origem or ("*",)) as servidor:
-        host_acesso = "localhost" if args.host == "0.0.0.0" else args.host
-        print(f"Servidor de salas em http://{host_acesso}:{servidor.server_port}")
+    with ServidorSalas((args.host, args.port), args.origem or ("*",), diretorio_web=args.web) as servidor:
+        print(f"Servidor escutando em {args.host}:{servidor.server_port}", flush=True)
+        if (servidor.diretorio_web / "index.html").is_file():
+            print("Jogo e API de salas disponíveis no mesmo endereço.", flush=True)
         print("Para abrir o jogo, execute em outro terminal: python jogo/main.py")
         print("No jogo, escolha Jogar com amigos. A conexão é configurada em jogo/config.py.")
         print("Salas ficam em memória. Ctrl+C encerra o servidor.")

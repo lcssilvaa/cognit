@@ -5,7 +5,7 @@ from pathlib import Path
 
 import pygame
 
-from config import CORES, LARGURA
+from config import ALTURA, CORES, LARGURA
 from avatares import AVATARES, AVATAR_PADRAO
 
 ASSETS = Path(__file__).resolve().parent / "assets"
@@ -22,7 +22,9 @@ class Interface:
     def redimensionar(self, tela):
         """Desenha na resolução real, mantendo as coordenadas do protótipo."""
         self.tela = tela
-        self.escala = tela.get_width() / LARGURA
+        self.escala_x = tela.get_width() / LARGURA
+        self.escala_y = tela.get_height() / ALTURA
+        self.escala = min(self.escala_x, self.escala_y)
         self.fonte.cache_clear()
         self.imagem.cache_clear()
         self.fundo = pygame.Surface(tela.get_size())
@@ -37,7 +39,8 @@ class Interface:
         return round(valor * self.escala)
 
     def ponto(self, posicao):
-        return tuple(self.medida(valor) for valor in posicao)
+        x, y = posicao
+        return (round(x * self.escala_x), round(y * self.escala_y))
 
     def retangulo(self, area):
         area = pygame.Rect(area)
@@ -59,7 +62,7 @@ class Interface:
     @lru_cache(maxsize=32)
     def imagem(self, nome, largura, altura):
         caminho = ASSETS / nome
-        tamanho = self.ponto((largura, altura))
+        tamanho = (max(1, self.medida(largura)), max(1, self.medida(altura)))
         if caminho.suffix == ".svg":
             if caminho.is_file():
                 return pygame.image.load_sized_svg(str(caminho), tamanho).convert_alpha()
@@ -69,7 +72,8 @@ class Interface:
 
     def ilustracao(self, nome, area):
         area = pygame.Rect(area)
-        self.tela.blit(self.imagem(nome, *area.size), self.ponto(area.topleft))
+        imagem = self.imagem(nome, *area.size)
+        self.tela.blit(imagem, imagem.get_rect(center=self.retangulo(area).center))
 
     def iniciar_tela(self):
         self.botoes = []
@@ -132,7 +136,7 @@ class Interface:
 
     def rotulo(self, texto, area, tamanho=18, cor="texto", negrito=False, centralizado=False):
         """Uma linha com redução e reticências para nomes e pontos muito longos."""
-        largura = self.medida(area[2] - 4)
+        largura = round((area[2] - 4) * self.escala_x)
         texto = str(texto)
         while tamanho > 12 and self.fonte(tamanho, negrito).size(texto)[0] > largura:
             tamanho -= 1
@@ -261,7 +265,7 @@ class Interface:
         self.cartao(area, "branco", "azul" if selecionado else "borda", 14)
         fonte = self.fonte(17)
         visivel = str(valor)
-        while visivel and fonte.size(visivel)[0] > self.medida(area.width - 28):
+        while visivel and fonte.size(visivel)[0] > round((area.width - 28) * self.escala_x):
             visivel = visivel[1:]
         self.texto(visivel or "Toque para preencher", (area.x + 12, area.y + 13),
                    17, "texto" if valor else "secundario")

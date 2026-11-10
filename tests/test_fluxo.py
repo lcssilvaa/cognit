@@ -6,6 +6,7 @@ from pathlib import Path
 import sys
 from threading import Thread
 from time import monotonic
+from types import SimpleNamespace
 import unittest
 from unittest.mock import patch
 
@@ -89,6 +90,20 @@ class TestFluxo(unittest.IsolatedAsyncioTestCase):
         jogo.executar_acao("continuar")
         self.assertEqual(jogo.tela_atual, "pergunta")
         self.assertGreater(jogo.partida.tempo_restante, 44)
+
+    async def test_web_preenche_tela_e_mantem_os_alvos_de_toque(self):
+        jogo = self.jogo
+        for tamanho in ((720, 1440), (824, 1700), (780, 1688), (1440, 720)):
+            with self.subTest(tamanho=tamanho), patch("main.sys.platform", "emscripten"), \
+                    patch("main.platform.window", SimpleNamespace(cognit_resolucao=tamanho), create=True):
+                jogo.desenhar()
+                self.assertEqual(jogo.area_jogo, jogo.janela.get_rect())
+                self.assertEqual(jogo.tela.get_size(), tamanho)
+                for area, acao in jogo.ui.botoes:
+                    pixel = jogo.ui.retangulo(area).center
+                    self.assertEqual(jogo.ui.acao_clicada(jogo.posicao_logica(pixel)), acao)
+                imagem = jogo.ui.imagem("marca.svg", 64, 64)
+                self.assertEqual(imagem.get_width(), imagem.get_height())
 
     async def test_controle_de_musica_preserva_a_pergunta(self):
         jogo = self.jogo
