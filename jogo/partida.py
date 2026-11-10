@@ -2,6 +2,7 @@
 
 from config import VIDAS_INICIAIS
 from perguntas import PERGUNTAS
+from tempo import espera_da_dica, limite_da_pergunta
 
 
 class Partida:
@@ -23,6 +24,37 @@ class Partida:
         self.erros = 0
         self.ultimo_acerto = None
         self.alternativas_erradas = set()
+        self.tempo_decorrido = 0.0
+        self.tempo_esgotado = False
+        self.dica_visivel = False
+
+    @property
+    def tempo_limite(self):
+        return limite_da_pergunta(self.indice)
+
+    @property
+    def tempo_restante(self):
+        return max(0.0, self.tempo_limite - self.tempo_decorrido)
+
+    @property
+    def espera_dica(self):
+        return max(0.0, espera_da_dica(self.tempo_limite) - self.tempo_decorrido)
+
+    def revelar_dica(self):
+        if self.ultimo_acerto is None and self.espera_dica == 0 and self.pergunta.get("dica"):
+            self.dica_visivel = True
+        return self.dica_visivel
+
+    def atualizar_tempo(self, segundos):
+        """Chamado apenas na pergunta: feedback e confirmação de saída pausam."""
+        if self.ultimo_acerto is not None or self.venceu or self.perdeu:
+            return
+        self.tempo_decorrido += max(0, segundos)
+        if self.tempo_restante == 0:
+            self.tempo_esgotado = True
+            self.ultimo_acerto = False
+            self.vidas -= 1
+            self.erros += 1
 
     @property
     def pergunta(self):
@@ -65,4 +97,10 @@ class Partida:
         if self.ultimo_acerto and not self.venceu:
             self.indice += 1
             self.alternativas_erradas.clear()
+        # Errar uma alternativa mantém o tempo restante. Um timeout concede
+        # uma nova tentativa com o mesmo limite, descontando uma única vida.
+        if self.ultimo_acerto or self.tempo_esgotado:
+            self.tempo_decorrido = 0.0
+            self.dica_visivel = False
+        self.tempo_esgotado = False
         self.ultimo_acerto = None

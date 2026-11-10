@@ -1,10 +1,30 @@
 """Personalize aqui o nome, as vidas e as cores do jogo."""
 
+import os
+
 TITULO = "Cognit"
 LARGURA = 390
 ALTURA = 844
 FPS = 60
 VIDAS_INICIAIS = 3
+
+# A música é original, instrumental e toca em loop. Volume entre 0.0 e 1.0.
+MUSICA_ATIVA = True
+VOLUME_MUSICA = 0.22
+
+# Tempos em segundos. A redução acontece ao avançar de pergunta.
+TEMPO_INICIAL = 45
+REDUCAO_POR_PERGUNTA = 3
+TEMPO_MINIMO = 12
+ESPERA_DICA = 8
+
+# Salas: o anfitrião também joga. O servidor é iniciado separadamente.
+SERVIDOR_PADRAO = os.environ.get("COGNIT_SERVIDOR", "http://localhost:8765")
+INTERVALO_SINCRONIZACAO = 0.5
+MAX_JOGADORES = 12
+EXPIRACAO_SALA = 2 * 60 * 60
+TEMPO_DESCONEXAO = 30
+DURACAO_FEEDBACK_RODADA = 2.5
 
 # As medidas seguem as telas de 390 x 844 da pasta prototipo.
 CORES = {

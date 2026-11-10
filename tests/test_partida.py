@@ -7,6 +7,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "jogo"))
 
 from partida import Partida
+from config import ESPERA_DICA, TEMPO_MINIMO
 
 
 class TestPartida(unittest.TestCase):
@@ -80,6 +81,64 @@ class TestPartida(unittest.TestCase):
         partida.continuar()
         self.assertTrue(partida.venceu)
         self.assertEqual(partida.progresso, 100)
+
+    def test_tempo_diminui_ao_avancar_e_respeita_piso(self):
+        partida = Partida()
+        anterior = partida.tempo_limite
+        for pergunta in partida.perguntas[:-1]:
+            partida.atualizar_tempo(2)
+            partida.responder(pergunta["correta"])
+            partida.continuar()
+            self.assertLess(partida.tempo_limite, anterior)
+            self.assertEqual(partida.tempo_restante, partida.tempo_limite)
+            anterior = partida.tempo_limite
+        partida.indice = 100
+        self.assertEqual(partida.tempo_limite, TEMPO_MINIMO)
+
+    def test_dica_so_abre_apos_espera_e_reinicia_no_proximo_nivel(self):
+        partida = Partida()
+        self.assertFalse(partida.revelar_dica())
+        partida.atualizar_tempo(ESPERA_DICA - 0.01)
+        self.assertFalse(partida.revelar_dica())
+        partida.atualizar_tempo(0.01)
+        self.assertTrue(partida.revelar_dica())
+        partida.responder(partida.pergunta["correta"])
+        partida.continuar()
+        self.assertFalse(partida.dica_visivel)
+        self.assertFalse(partida.revelar_dica())
+
+    def test_timeout_perde_uma_vida_bloqueia_resposta_e_reinicia_tentativa(self):
+        partida = Partida()
+        partida.atualizar_tempo(partida.tempo_limite + 10)
+        self.assertTrue(partida.tempo_esgotado)
+        self.assertEqual(partida.vidas, 2)
+        self.assertIsNone(partida.responder(partida.pergunta["correta"]))
+        partida.atualizar_tempo(100)
+        self.assertEqual(partida.vidas, 2)
+        partida.continuar()
+        self.assertEqual(partida.indice, 0)
+        self.assertEqual(partida.tempo_restante, partida.tempo_limite)
+        self.assertFalse(partida.tempo_esgotado)
+        self.assertTrue(partida.responder(partida.pergunta["correta"]))
+
+    def test_erro_preserva_prazo_e_feedback_nao_consume_tempo(self):
+        partida = Partida()
+        partida.atualizar_tempo(10)
+        restante = partida.tempo_restante
+        partida.responder(0)
+        partida.atualizar_tempo(200)
+        self.assertEqual(partida.tempo_restante, restante)
+        partida.continuar()
+        self.assertEqual(partida.tempo_restante, restante)
+
+    def test_timeouts_podem_encerrar_a_partida(self):
+        partida = Partida()
+        for _ in range(3):
+            partida.atualizar_tempo(partida.tempo_limite)
+            partida.continuar()
+        self.assertTrue(partida.perdeu)
+        partida.atualizar_tempo(100)
+        self.assertEqual(partida.vidas, 0)
 
 
 if __name__ == "__main__":
