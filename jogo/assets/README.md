@@ -14,3 +14,10 @@ uma ilustração de 200 pixels do layout pode ocupar 600 pixels reais.
 https://github.com/google/fonts/tree/main/ofl/nunito
 
 A licença da fonte está em `OFL-Nunito.txt`.
+
+`musica_fundo.ogg` é uma composição instrumental original para o Cognit,
+sintetizada por `scripts/gerar_musica.py`: 20 segundos, 96 BPM, mono a 24 kHz.
+O gerador usa notas, acordes e envelopes definidos no próprio código, sem
+gravações ou trechos de músicas de terceiros. O OGG é compartilhado pelas
+versões desktop e web. Para personalizar, edite o gerador ou substitua esse
+arquivo, mantendo o nome; o volume fica em `VOLUME_MUSICA` no `config.py`.
