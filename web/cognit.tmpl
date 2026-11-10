@@ -73,8 +73,8 @@ asyncio.run(custom_site())
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#10294D">
-<meta name="description" content="Perguntas de tecnologia, três vidas e um novo desafio a cada nível. Jogue Cognit!">
-<title>{{cookiecutter.title}} · Quiz de tecnologia</title>
+<meta name="description" content="Perguntas de Tecnologia e UX e Design, três vidas e salas para jogar com amigos. Jogue Cognit!">
+<title>{{cookiecutter.title}} · Tecnologia e UX e Design</title>
 <link rel="icon" type="image/png" href="favicon.png">
 <script>
 // END BLOCK
@@ -135,6 +135,35 @@ async function custom_onload() {
 }
 function custom_prerun() {}
 function custom_postrun() {}
+// Ponte pequena entre o Python/WebAssembly e o HTTP do servidor de salas.
+window.cognit_servidor = new URLSearchParams(location.search).get("servidor") || "http://localhost:8765";
+const pedidosCognit = new Map();
+function cognit_json_ascii(valor) {
+    // A ponte do Pygbag pode interpretar UTF-8 como Latin-1. Os escapes JSON
+    // preservam apelidos, dicas e explicações, inclusive emojis e acentos.
+    return JSON.stringify(valor).replace(/[\u007f-\uffff]/g,
+        caractere => "\\u" + caractere.charCodeAt(0).toString(16).padStart(4, "0"));
+}
+function cognit_pedir_texto(campo, atual) {
+    return cognit_json_ascii(window.prompt(`Informe ${campo}:`, atual));
+}
+function cognit_requisitar(id, url, corpo) {
+    const pedido = {controle: new AbortController(), resultado: ""};
+    pedidosCognit.set(id, pedido);
+    const timeout = setTimeout(() => pedido.controle.abort(), 6000);
+    fetch(url, {
+        method: "POST", headers: {"Content-Type": "application/json"},
+        body: corpo, signal: pedido.controle.signal, credentials: "omit"
+    }).then(resposta => resposta.json())
+      .then(dados => pedido.resultado = cognit_json_ascii(dados))
+      .catch(() => pedido.resultado = cognit_json_ascii({erro: "Não foi possível conectar. Tente novamente em instantes."}))
+      .finally(() => clearTimeout(timeout));
+}
+function cognit_resultado(id) { return pedidosCognit.get(id)?.resultado || ""; }
+function cognit_cancelar(id) {
+    pedidosCognit.get(id)?.controle.abort();
+    pedidosCognit.delete(id);
+}
 function info_inline(data) { document.getElementById("info").textContent = data; }
 globalThis.__canvas_resized = () => {};
 </script>
@@ -170,7 +199,7 @@ globalThis.__canvas_resized = () => {};
 <div id="infobox" role="status" aria-live="polite">Cognit<br>Preparando seu desafio…</div>
 <div id="transfer"><div id="status"></div><progress id="progress" value="0" max="100"></progress></div>
 <canvas class="emscripten" id="canvas" width="390" height="844" tabindex="0"
-    aria-label="Cognit: quiz de tecnologia. Use Tab e Enter para navegar e A, B ou C para responder."
+    aria-label="Cognit: quiz com tempo e salas de amigos. Use Tab e Enter para navegar e A, B, C ou D para responder."
     oncontextmenu="event.preventDefault()"></canvas>
 <canvas class="emscripten" id="canvas3d" width="390" height="844" hidden></canvas>
 <div id="html"></div>

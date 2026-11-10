@@ -6,6 +6,7 @@ from pathlib import Path
 import pygame
 
 from config import CORES, LARGURA
+from avatares import AVATARES, AVATAR_PADRAO
 
 ASSETS = Path(__file__).resolve().parent / "assets"
 
@@ -74,6 +75,10 @@ class Interface:
         self.botoes = []
         self.tela.blit(self.fundo, (0, 0))
 
+    def cabecalho(self, titulo, voltar="inicio"):
+        self.botao("<", (24, 42, 44, 44), voltar, "contorno", tamanho=24)
+        self.texto(titulo, (24, 114), 29, negrito=True)
+
     def texto(self, texto, posicao, tamanho=20, cor="texto", negrito=False,
               centralizado=False):
         imagem = self.fonte(tamanho, negrito).render(str(texto), True, CORES[cor])
@@ -125,6 +130,19 @@ class Interface:
             pygame.draw.rect(self.tela, CORES[borda], area, width=max(1, self.medida(2)),
                              border_radius=self.medida(raio))
 
+    def rotulo(self, texto, area, tamanho=18, cor="texto", negrito=False, centralizado=False):
+        """Uma linha com redução e reticências para nomes e pontos muito longos."""
+        largura = self.medida(area[2] - 4)
+        texto = str(texto)
+        while tamanho > 12 and self.fonte(tamanho, negrito).size(texto)[0] > largura:
+            tamanho -= 1
+        fonte = self.fonte(tamanho, negrito)
+        if fonte.size(texto)[0] > largura:
+            while texto and fonte.size(texto + "…")[0] > largura:
+                texto = texto[:-1]
+            texto += "…"
+        self.paragrafo(texto, area, tamanho, cor, negrito, centralizado)
+
     def botao(self, rotulo, area, acao, estilo="azul", ativo=True, tamanho=20):
         """Registra a ação do botão. O main.py decide o que ela faz."""
         area = pygame.Rect(area)
@@ -146,19 +164,42 @@ class Interface:
 
     def alternativa(self, indice, rotulo, area, desativada=False):
         area = pygame.Rect(area)
-        self.cartao(area, "azul_claro" if desativada else "branco", raio=20)
-        cor = "desativado" if desativada else "azul"
-        circulo = (area.x + 34, area.centery)
-        self.circulo(circulo, 18, "borda" if desativada else "azul_claro")
-        self.texto(chr(65 + indice), (circulo[0], circulo[1] - 14),
-                   19, cor, True, True)
-        self.paragrafo(rotulo, (area.x + 66, area.y + 5, area.width - 83, area.height - 10),
-                       19, "desativado" if desativada else "texto", True)
+        self.cartao(area, "azul_claro" if desativada else "branco", None, raio=16)
+        self.texto(chr(65 + indice), (area.x + 24, area.centery - 12),
+                   17, "desativado" if desativada else "secundario", True)
+        self.paragrafo(rotulo, (area.x + 57, area.y + 9, area.width - 73, area.height - 18),
+                       19, "desativado" if desativada else "texto")
         if not desativada:
             self.botoes.append((area, f"resposta_{indice}"))
             if area.collidepoint(self.mouse) or (
                     self.foco_ativo and self.foco == len(self.botoes) - 1):
                 self.contorno(area, "azul")
+
+    def icone_fechar(self, area, acao):
+        area = pygame.Rect(area)
+        x, y = area.center
+        for sentido in (-1, 1):
+            pygame.draw.line(self.tela, CORES["secundario"],
+                             self.ponto((x - 6, y - 6 * sentido)),
+                             self.ponto((x + 6, y + 6 * sentido)), max(1, self.medida(2)))
+        self.area_interativa(area, acao)
+
+    def controle_som(self, habilitada, area):
+        """Ícone vetorial discreto, disponível por clique, foco ou atalho M."""
+        area = pygame.Rect(area)
+        x, y = area.center
+        cor = CORES["secundario"]
+        pygame.draw.polygon(self.tela, cor, [self.ponto(p) for p in
+            [(x - 10, y - 4), (x - 5, y - 4), (x + 1, y - 9),
+             (x + 1, y + 9), (x - 5, y + 4), (x - 10, y + 4)]])
+        if habilitada:
+            pygame.draw.arc(self.tela, cor, self.retangulo((x - 6, y - 10, 20, 20)),
+                            -0.8, 0.8, max(1, self.medida(2)))
+        else:
+            for sentido in (-1, 1):
+                pygame.draw.line(self.tela, cor, self.ponto((x + 6, y - 4 * sentido)),
+                                 self.ponto((x + 14, y + 4 * sentido)), max(1, self.medida(2)))
+        self.area_interativa(area, "alternar_musica")
 
     def vidas(self, quantidade, total, centro_x=195, y=80, tamanho=26):
         espacamento = tamanho + 11
@@ -186,6 +227,45 @@ class Interface:
 
     def mascote(self, expressao, area):
         self.ilustracao(f"mascote_{expressao}.svg", area)
+
+    def avatar(self, icone, area):
+        cadastro = AVATARES.get(icone, AVATARES[AVATAR_PADRAO])
+        self.ilustracao(cadastro["arquivo"], area)
+
+    def simbolo_resultado(self, acertou, centro, tamanho=36, cor="branco"):
+        x, y = centro
+        if acertou:
+            pontos = [(x - tamanho * .55, y), (x - tamanho * .12, y + tamanho * .4),
+                      (x + tamanho * .65, y - tamanho * .5)]
+            pygame.draw.lines(self.tela, CORES[cor], False,
+                              [self.ponto(p) for p in pontos], max(2, self.medida(7)))
+        else:
+            for sentido in (-1, 1):
+                pygame.draw.line(self.tela, CORES[cor],
+                                 self.ponto((x - tamanho * .4, y - tamanho * .4 * sentido)),
+                                 self.ponto((x + tamanho * .4, y + tamanho * .4 * sentido)),
+                                 max(2, self.medida(7)))
+
+    def area_interativa(self, area, acao, ativa=True):
+        """Permite clicar/focar ilustrações e campos sem desenhar outro botão."""
+        area = pygame.Rect(area)
+        if ativa:
+            self.botoes.append((area, acao))
+            if area.collidepoint(self.mouse) or (
+                    self.foco_ativo and self.foco == len(self.botoes) - 1):
+                self.contorno(area, "azul", 18)
+
+    def campo(self, titulo, valor, area, acao, selecionado=False):
+        area = pygame.Rect(area)
+        self.texto(titulo, (area.x, area.y - 25), 15, "secundario", True)
+        self.cartao(area, "branco", "azul" if selecionado else "borda", 14)
+        fonte = self.fonte(17)
+        visivel = str(valor)
+        while visivel and fonte.size(visivel)[0] > self.medida(area.width - 28):
+            visivel = visivel[1:]
+        self.texto(visivel or "Toque para preencher", (area.x + 12, area.y + 13),
+                   17, "texto" if valor else "secundario")
+        self.area_interativa(area, acao)
 
     def acao_clicada(self, posicao):
         for area, acao in self.botoes:

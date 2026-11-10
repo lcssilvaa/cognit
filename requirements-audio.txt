@@ -1,0 +1,2 @@
+# Opcional: somente para recriar o áudio com scripts/gerar_musica.py.
+soundfile==0.13.1
