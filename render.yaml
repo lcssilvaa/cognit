@@ -2,12 +2,19 @@
 services:
   - type: web
     name: cognit
-    runtime: python
-    plan: free
-    numInstances: 1
+    runtime: static
     buildCommand: pip install -r requirements-web.txt && python exportar_web.py
-    startCommand: python servidor.py
-    healthCheckPath: /saude
+    staticPublishPath: jogo/build/web
     envVars:
       - key: SKIP_INSTALL_DEPS
         value: "true"
+      - key: COGNIT_SERVIDOR
+        value: https://cognit-server.onrender.com
+  - type: web
+    name: cognit-server
+    runtime: python
+    plan: free
+    numInstances: 1
+    buildCommand: python --version
+    startCommand: python -u servidor.py --host 0.0.0.0 --port $PORT
+    healthCheckPath: /saude

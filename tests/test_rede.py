@@ -11,6 +11,14 @@ from rede import ClienteSalas, ErroRede
 
 
 class TestRede(unittest.IsolatedAsyncioTestCase):
+    async def test_primeira_conexao_aguarda_servidor_sem_alongar_comandos_da_sala(self):
+        cliente = ClienteSalas("https://salas.exemplo")
+        with patch.object(ClienteSalas, "_desktop", return_value={}) as transporte:
+            await cliente.requisitar("catalogo", {})
+            self.assertEqual(transporte.call_args.args[2], 75)
+            await cliente.requisitar("estado", {})
+            self.assertEqual(transporte.call_args.args[2], 6)
+
     async def test_json_sem_objeto_e_tratado_como_erro_de_rede(self):
         cliente = ClienteSalas("http://jogo.local")
         for resposta in (None, [], "indisponível", True, 0):

@@ -76,6 +76,7 @@ asyncio.run(custom_site())
 <meta name="description" content="Perguntas de Tecnologia e UX e Design, três vidas e salas para jogar com amigos. Jogue Cognit!">
 <title>{{cookiecutter.title}} · Tecnologia e UX e Design</title>
 <link rel="icon" type="image/png" href="favicon.png">
+<script src="configuracao.js"></script>
 <script>
 // END BLOCK
 config = {
@@ -148,7 +149,10 @@ async function custom_onload() {
 function custom_prerun() {}
 function custom_postrun() {}
 // Ponte pequena entre o Python/WebAssembly e o HTTP do servidor de salas.
-window.cognit_servidor = new URLSearchParams(location.search).get("servidor") || location.origin;
+window.cognit_servidor = new URLSearchParams(location.search).get("servidor")
+    || window.cognit_config?.servidor
+    || window.cognit_config?.servidoresPorOrigem?.[location.origin]
+    || location.origin;
 // O áudio nativo continua estável mesmo quando um quadro do Pygame demora.
 const musicaCognit = new Audio("assets/musica_fundo.ogg");
 musicaCognit.loop = true;
@@ -223,13 +227,10 @@ function cognit_json_ascii(valor) {
     return JSON.stringify(valor).replace(/[\u007f-\uffff]/g,
         caractere => "\\u" + caractere.charCodeAt(0).toString(16).padStart(4, "0"));
 }
-function cognit_pedir_texto(campo, atual) {
-    return cognit_json_ascii(window.prompt(`Informe ${campo}:`, atual));
-}
-function cognit_requisitar(id, url, corpo) {
+function cognit_requisitar(id, url, corpo, espera = 6) {
     const pedido = {controle: new AbortController(), resultado: ""};
     pedidosCognit.set(id, pedido);
-    const timeout = setTimeout(() => pedido.controle.abort(), 6000);
+    const timeout = setTimeout(() => pedido.controle.abort(), espera * 1000);
     fetch(url, {
         method: "POST", headers: {"Content-Type": "application/json"},
         body: corpo, signal: pedido.controle.signal, credentials: "omit"
@@ -248,6 +249,7 @@ globalThis.__canvas_resized = () => {};
 </script>
 <script src="{{cookiecutter.cdn}}browserfs.min.js"></script>
 <style>
+    @font-face { font-family: Nunito; src: url("assets/Nunito-Regular.ttf") format("truetype"); font-display: swap; }
     * { box-sizing: border-box; }
     [hidden] { display: none !important; }
     html, body { margin: 0; width: 100%; height: 100%; overflow: hidden; }
@@ -272,6 +274,14 @@ globalThis.__canvas_resized = () => {};
         font: inherit; cursor: pointer;
     }
     #status { display: none; }
+    .campo-cognit {
+        position: fixed; z-index: 4; margin: 0; min-width: 0;
+        border: 2px solid #d6e2f2; background: #fff; color: #1f2937;
+        font-family: Nunito, system-ui, sans-serif; outline: none;
+        touch-action: manipulation; -webkit-appearance: none; appearance: none;
+    }
+    .campo-cognit::placeholder { color: #6b7280; opacity: 1; }
+    .campo-cognit:focus { border-color: #1e5fa8; box-shadow: 0 0 0 2px #1e5fa81a; }
     #tela-cheia {
         position: fixed; top: max(6px, env(safe-area-inset-top));
         right: max(6px, env(safe-area-inset-right)); z-index: 5;
@@ -297,6 +307,13 @@ globalThis.__canvas_resized = () => {};
     aria-label="Cognit: quiz com tempo e salas de amigos. Use Tab e Enter para navegar e A, B, C ou D para responder."
     oncontextmenu="event.preventDefault()"></canvas>
 <canvas class="emscripten" id="canvas3d" width="390" height="844" hidden></canvas>
+<input id="campo-nome" class="campo-cognit" data-campo="nome" type="text" hidden
+    aria-label="Como você quer ser chamado?" placeholder="Toque para preencher"
+    autocomplete="nickname" maxlength="40" enterkeyhint="done" spellcheck="false">
+<input id="campo-codigo" class="campo-cognit" data-campo="codigo" type="text" hidden
+    aria-label="Código da sala" placeholder="Código de 6 números" inputmode="numeric"
+    pattern="[0-9]*" autocomplete="off" enterkeyhint="done" spellcheck="false">
+<script src="campos.js"></script>
 <div id="html"></div>
 <div id="crt" hidden><div id="system" hidden></div><div id="box" hidden>
     <div id="info"></div><iframe id="iframe" name="iframe" title="Informações" hidden></iframe>

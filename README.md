@@ -21,8 +21,9 @@ No Linux/macOS, crie o ambiente com `python3 -m venv .venv` e use
 `.venv/bin/python` no lugar de `.\.venv\Scripts\python.exe`.
 
 O pacote instalado é `pygame-ce`, a edição comunitária do Pygame compatível
-com o Pygbag. O código usa **`import pygame`**, e todas as telas e interações
-do jogo são feitas com essa biblioteca. Não instale `pygame` e `pygame-ce`
+com o Pygbag. O código usa **`import pygame`** para desenhar as telas.
+No navegador, campos HTML sobre o canvas permitem digitar e usar o teclado
+do celular diretamente no formulário. Não instale `pygame` e `pygame-ce`
 juntos no mesmo ambiente, pois ambos usam o mesmo nome de importação.
 
 ## Regras
@@ -113,16 +114,19 @@ Em outros dois terminais, abra uma instância do jogo em cada um:
 4. Com pelo menos dois participantes, o anfitrião clica em **Iniciar disputa**.
 
 `http://localhost:8765` é o endereço padrão da API para o cliente desktop,
-configurado em `jogo/config.py`. No navegador, a conexão usa automaticamente
-o mesmo endereço em que o jogo foi aberto. Se o build web existir,
+configurado em `jogo/config.py`. No navegador local, a conexão usa o endereço
+em que o jogo foi aberto; em produção, usa a API de `web/configuracao.json`.
+Se o build web existir,
 `servidor.py` serve o jogo e a API; sem o build, a raiz mostra o status do
 servidor. Para abrir a janela do jogo, execute `python jogo/main.py`.
 Após atualizar `servidor.py`, encerre o servidor
 com `Ctrl+C` e execute-o novamente para carregar as alterações.
 
-No desktop, clique em um campo e digite. **Enter** encerra a edição,
-**Ctrl+V** cola e **Ctrl+A** limpa o campo. No navegador, tocar em um campo
-abre um diálogo nativo, incluindo o teclado do celular.
+Clique ou toque no campo para digitar diretamente no jogo, inclusive no
+navegador. Não há diálogo de texto. No navegador, os campos têm cursor,
+seleção, colagem e suporte a acentos; o código da sala abre o teclado
+numérico no celular. **Enter** encerra a edição sem enviar o formulário.
+No desktop Pygame, **Ctrl+V** cola e **Ctrl+A** limpa o campo.
 
 ### Em computadores/celulares na mesma rede
 
@@ -189,19 +193,29 @@ compartilham esses dados.
 
 ### Usar pela internet
 
-O `render.yaml` configura um **Web Service Python** para servir o jogo e as
-salas juntos. `servidor.py` escuta em `0.0.0.0` e usa a variável `PORT` da
-hospedagem (8765 fora dela). O navegador usa a origem atual, inclusive HTTPS,
-sem apontar para o `localhost` do jogador. Use uma única instância, pois as
-salas ficam em memória. Nenhuma hospedagem é criada ao executar o projeto.
+O `render.yaml` configura dois serviços, como na publicação atual:
+
+- Jogo estático: `https://cognit-8hg4.onrender.com`.
+- API Python: `https://cognit-server.onrender.com`.
+
+`web/configuracao.json` associa a origem do jogo à API. A exportação gera
+`configuracao.js`, lido pelo navegador. O jogo publicado conecta à API
+automaticamente; builds locais continuam usando a origem local.
+Para trocar a API de qualquer build, defina `COGNIT_SERVIDOR` no ambiente
+do **site estático** antes de executar `exportar_web.py` e publique novamente.
+O parâmetro `?servidor=...` tem prioridade para testes.
+
+`servidor.py` escuta em `0.0.0.0` e usa `PORT` da hospedagem (8765 fora dela).
+O Render injeta `PORT` automaticamente: não é necessário criar `.env` nem
+cadastrar essa variável manualmente. Use uma única instância, pois as salas
+ficam em memória. Nenhuma hospedagem é criada ao executar o projeto.
 
 Para clientes desktop, configure o endereço HTTPS em `SERVIDOR_PADRAO` ou
 em `COGNIT_SERVIDOR`. Se optar por manter site e API separados, uma página
 HTTPS precisa de uma API HTTPS. Compartilhe o site como
 `https://jogo.seu-dominio.com/?servidor=https://salas.seu-dominio.com`.
 
-Para hospedar somente a API separadamente, crie um **New → Web Service**
-no mesmo repositório e configure:
+No **Web Service da API**, use:
 
 | Campo | Valor |
 | --- | --- |
@@ -216,13 +230,14 @@ O servidor usa apenas a biblioteca padrão; as dependências do Pygame são do
 jogo. O Render fornece a variável `PORT` e o endereço HTTPS da API.
 [Configuração de Web Services](https://render.com/docs/web-services).
 Depois da publicação, abra `https://SEU-SERVIDOR.onrender.com/saude` e confira
-`{"ok": true}`. Compartilhe o endereço do jogo com o parâmetro
-`?servidor=https://SEU-SERVIDOR.onrender.com`; a versão web lê essa URL no
-carregamento. No desktop, defina `COGNIT_SERVIDOR` antes de abrir o jogo.
+`{"ok": true}`. O jogo público já está associado ao servidor atual em
+`web/configuracao.json`. No desktop, defina `COGNIT_SERVIDOR` antes de abrir
+o jogo.
 
 No plano Free, o serviço suspende após 15 minutos sem tráfego e pode levar
-cerca de um minuto para despertar. Abra `/saude` e espere a resposta antes
-de entrar no jogo. Reinícios e novas publicações apagam as salas em memória.
+cerca de um minuto para despertar. O carregamento inicial do catálogo aguarda
+até 75 segundos; os comandos de uma sala mantêm timeout de 6 segundos.
+Reinícios e novas publicações apagam as salas em memória.
 [Limites do plano gratuito](https://render.com/docs/free).
 
 O adaptador HTTP incluído usa `http.server`, adequado para demonstrações e
@@ -246,6 +261,8 @@ referências técnicas nos comentários de `jogo/perguntas.py`.
 | `jogo/perguntas.py` | Perguntas de Tecnologia, alternativas, resposta correta, explicação e dica |
 | `jogo/perguntas_ux_design.py` | Perguntas de UX e Design, com dicas, explicações e fontes |
 | `jogo/config.py` | Nome, vidas, tempos, limites de salas, cores e medidas |
+| `web/configuracao.json` | Associação entre a origem pública do jogo e o servidor de salas |
+| `web/campos.js` | Campos de nome e código dentro da versão web |
 | `jogo/tempo.py` | Cálculo do prazo decrescente e da espera pela dica |
 | `jogo/temas.py` | Cadastro dos temas disponíveis; os menus acompanham o catálogo |
 | `jogo/partida.py` | Regras solo: vidas, tempo, dica, acertos e progresso |
@@ -385,34 +402,35 @@ recalculados. Gere a exportação e publique novamente após editar o código.
 
 ### Publicar no Render
 
-Este projeto inclui um `render.yaml` para publicar jogo e salas em um
-**Web Service Python**, com plano gratuito sujeito às cotas da plataforma.
-[Documentação de Web Services](https://render.com/docs/web-services) e
+Este projeto inclui um `render.yaml` para publicar o jogo como **Static Site**
+e a API como **Web Service Python**, sujeitos às cotas da plataforma.
+[Documentação de sites estáticos](https://render.com/docs/static-sites),
+[Web Services](https://render.com/docs/web-services) e
 [limites do plano gratuito](https://render.com/docs/free).
 
 1. Envie este projeto para um repositório no GitHub, GitLab ou Bitbucket.
    Inclua `jogo/assets`, `web`, os arquivos Python e os requirements.
    A pasta `.venv` e os arquivos gerados em `build` ficam fora do Git.
-2. No Render, selecione **New → Web Service** e conecte o repositório.
-3. Preencha:
+2. No Render, selecione **New → Static Site** e conecte o repositório.
+3. No serviço do jogo, preencha:
 
    | Campo | Valor |
    | --- | --- |
    | Build Command | `pip install -r requirements-web.txt && python exportar_web.py` |
-   | Start Command | `python servidor.py` |
-   | Health Check Path | `/saude` |
+   | Publish Directory | `jogo/build/web` |
+   | Environment (opcional para as URLs atuais) | `COGNIT_SERVIDOR=https://cognit-server.onrender.com` |
 
-4. Crie o site e aguarde a construção. O Render fornece um endereço público
-   para compartilhar com outras pessoas.
+4. Para as salas, use o Web Service com as configurações da seção
+   **Usar pela internet**. Compartilhe a URL do site estático.
 
 Também é possível usar **New → Blueprint** para o Render ler o `render.yaml`.
 A versão de Python do build está indicada em `.python-version`.
 [Referência do Blueprint](https://render.com/docs/blueprint-spec).
 
-Se a publicação existente for um **Static Site**, crie um novo **Web Service**
-com esses valores. Para uma publicação nova, também é possível usar o
-Blueprint atualizado. Alterar o código não faz um Static Site executar
-Python. Compartilhe a URL do Web Service.
+Os dois serviços existentes podem ser mantidos. Republique o site estático
+para carregar os novos campos e a associação com a API. Alterar `PORT` no
+servidor não muda o endereço usado pelo jogo: essa ligação pertence à
+configuração do site e à exportação.
 Serviços gratuitos podem hibernar sem uso, e o primeiro acesso pode demorar.
 Reiniciar ou publicar o servidor encerra as salas em memória.
 

@@ -95,7 +95,7 @@ class VisuaisSala:
                 desenhar_cartao_tema(ui, tema, (24, 524, 342, 96),
                                     "sala_escolher_tema", compacto=True)
             else:
-                ui.paragrafo("Carregando temas…" if s.ocupado else "Nenhum tema disponível",
+                ui.paragrafo("Conectando ao servidor…" if s.ocupado else "Nenhum tema disponível",
                              (24, 524, 342, 68), 18, "secundario")
             ui.botao("Criar minha sala", (24, 636, 342, 58), "sala_criar",
                      ativo=not s.ocupado and tema is not None)

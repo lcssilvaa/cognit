@@ -3,12 +3,13 @@
 import asyncio
 import os
 from pathlib import Path
+import json
 import sys
 from threading import Thread
 from time import monotonic
 from types import SimpleNamespace
 import unittest
-from unittest.mock import patch
+from unittest.mock import Mock, patch
 
 os.environ.setdefault("SDL_VIDEODRIVER", "dummy")
 os.environ.setdefault("SDL_AUDIODRIVER", "dummy")
@@ -95,7 +96,8 @@ class TestFluxo(unittest.IsolatedAsyncioTestCase):
         jogo = self.jogo
         for tamanho in ((720, 1440), (824, 1700), (780, 1688), (1440, 720)):
             with self.subTest(tamanho=tamanho), patch("main.sys.platform", "emscripten"), \
-                    patch("main.platform.window", SimpleNamespace(cognit_resolucao=tamanho), create=True):
+                    patch("main.platform.window", SimpleNamespace(cognit_resolucao=tamanho,
+                          cognit_campos_ocultar=lambda: None), create=True):
                 jogo.desenhar()
                 self.assertEqual(jogo.area_jogo, jogo.janela.get_rect())
                 self.assertEqual(jogo.tela.get_size(), tamanho)
@@ -104,6 +106,20 @@ class TestFluxo(unittest.IsolatedAsyncioTestCase):
                     self.assertEqual(jogo.ui.acao_clicada(jogo.posicao_logica(pixel)), acao)
                 imagem = jogo.ui.imagem("marca.svg", 64, 64)
                 self.assertEqual(imagem.get_width(), imagem.get_height())
+
+    async def test_campos_web_sincronizam_texto_sem_duplicar_eventos_pygame(self):
+        janela = Mock()
+        janela.cognit_campos_ler.return_value = json.dumps({
+            "valores": {"nome": "José 🧠", "codigo": "00a1234"}, "ativo": "nome"})
+        salas = self.jogo.salas
+        with patch("main.sys.platform", "emscripten"), patch("main.platform.window", janela, create=True):
+            salas.sincronizar_campos_web()
+            self.assertEqual(salas.campos, {"nome": "José 🧠", "codigo": "001234"})
+            salas._editar_campo("nome")
+            janela.cognit_campo_focar.assert_called_once_with("nome")
+            self.assertTrue(salas.tratar_texto(pygame.event.Event(pygame.TEXTINPUT, text="José 🧠")))
+            self.assertTrue(salas.tratar_texto(pygame.event.Event(pygame.KEYDOWN, key=pygame.K_BACKSPACE, mod=0)))
+            self.assertEqual(salas.campos["nome"], "José 🧠")
 
     async def test_controle_de_musica_preserva_a_pergunta(self):
         jogo = self.jogo

@@ -76,6 +76,7 @@ class TelasSala:
 
     def atualizar(self):
         """Aplica respostas de rede sem reiniciar animações a cada consulta."""
+        self.sincronizar_campos_web()
         agora = monotonic()
         if self.tarefa is not None and self.tarefa.done():
             acao = self.acao_pendente
@@ -145,6 +146,7 @@ class TelasSala:
         self.comando_aguardando = None
 
     def executar_acao(self, acao):
+        self.sincronizar_campos_web()
         acoes_de_menu = (
             "sala_modo_criar", "sala_modo_entrar", "sala_escolher_icone", "sala_usar_icone",
             "sala_escolher_tema", "sala_voltar_temas", "sala_temas_anterior", "sala_temas_proxima",
@@ -252,12 +254,31 @@ class TelasSala:
         if campo not in self.campos:
             return
         if sys.platform == "emscripten":
-            valor = json.loads(str(platform.window.cognit_pedir_texto(campo, self.campos[campo])))
-            if valor is not None:
-                self.campos[campo] = self._filtrar(campo, str(valor))
+            platform.window.cognit_campo_focar(campo)
         else:
             self.campo_ativo = campo
             pygame.key.start_text_input()
+
+    def sincronizar_campos_web(self):
+        if sys.platform != "emscripten":
+            return
+        alteracoes = platform.window.cognit_campos_ler()
+        if alteracoes:
+            dados = json.loads(str(alteracoes))
+            for campo in self.campos:
+                self.campos[campo] = self._filtrar(campo, dados["valores"][campo])
+            self.campo_ativo = dados["ativo"]
+
+    def desenhar_campos_web(self):
+        if sys.platform != "emscripten":
+            return
+        if (self.jogo.tela_atual != "amigos" or self.escolhendo_icone or self.escolhendo_tema):
+            platform.window.cognit_campos_ocultar()
+            return
+        campos = {acao.removeprefix("campo_"): {"area": list(area),
+                  "valor": self.campos[acao.removeprefix("campo_")]}
+                  for area, acao in self.jogo.ui.botoes if acao.startswith("campo_")}
+        platform.window.cognit_campos_exibir(json.dumps(campos))
 
     @staticmethod
     def _filtrar(campo, valor):
@@ -268,6 +289,9 @@ class TelasSala:
     def tratar_texto(self, evento):
         if not self.campo_ativo:
             return False
+        if sys.platform == "emscripten":
+            # O input nativo já trata edição, seleção, colagem e composição.
+            return evento.type in (pygame.TEXTINPUT, pygame.KEYDOWN, pygame.KEYUP)
         campo = self.campo_ativo
         if evento.type == pygame.TEXTINPUT:
             self.campos[campo] = self._filtrar(campo, self.campos[campo] + evento.text)

@@ -156,6 +156,7 @@ class Jogo:
                          and not self.salas.estado["voce"]["respondeu"] and not self.salas.confirmando_saida)
         x_som = 224 if self.tela_atual == "pergunta" or pergunta_sala else 322
         self.ui.controle_som(self.musica.habilitada, (x_som, 42, 40, 44))
+        self.salas.desenhar_campos_web()
 
     def tratar_evento(self, evento):
         if evento.type in (pygame.MOUSEBUTTONDOWN, pygame.FINGERDOWN, pygame.KEYDOWN):
