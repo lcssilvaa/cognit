@@ -22,7 +22,7 @@ ESPERA_DICA = 8
 # Na versão web, a API vem de web/configuracao.json ou da variável de build.
 SERVIDOR_PADRAO = os.environ.get("COGNIT_SERVIDOR", "http://localhost:8765")
 INTERVALO_SINCRONIZACAO = 0.5
-MAX_JOGADORES = 12
+MAX_JOGADORES = 20
 EXPIRACAO_SALA = 2 * 60 * 60
 TEMPO_DESCONEXAO = 30
 DURACAO_FEEDBACK_RODADA = 2.5
